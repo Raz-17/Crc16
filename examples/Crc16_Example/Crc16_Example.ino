@@ -1,13 +1,14 @@
 #include "Crc16.h"
 //Crc 16 library (XModem)
-Crc16 crc; 
+#define CRC_POLY_16  0x8005
+Crc16 crc(false, false, CRC_POLY_16, 0x0000, 0x0000, 0x8000, 0xFFFF);
 
 void setup()
 {
-    Serial.begin(38400); 
-    Serial.println("CRC-16 bit test program");
-    Serial.println("=======================");
-  
+  Serial.begin(9600);
+  Serial.println("CRC-16 bit test program");
+  Serial.println("=======================");
+
 }
 
 void loop()
@@ -22,64 +23,124 @@ void loop()
   */
   //calculate crc incrementally
   byte data[] = {0x1, 0x70, 0x1, 0x69};
-  
-  Serial.println("Calculating crc incrementally");
-  
+  byte msg[6];
+
+  Serial.println("Calculating crc incrementally:");
+
   crc.clearCrc();
-  for(byte i=0;i<sizeof data;i++)
+  for (byte i = 0; i < sizeof data; i++)
   {
-     Serial.print("byte ");
-     Serial.print(i);
-     Serial.print(" = ");
-     Serial.println(data[i]);
-     crc.updateCrc(data[i]);
+    Serial.print("byte ");
+    Serial.print(i);
+    Serial.print(" = 0x");
+    Serial.println(data[i],HEX);
+    crc.updateCrc(data[i]);
   }
   unsigned short value = crc.getCrc();
+  Serial.print("\ncrc = 0x");
+  Serial.println(value, HEX);
+
+  Serial.println("\nReference crc:");
+  value = calcrc((char*)data, sizeof data);
   Serial.print("crc = 0x");
   Serial.println(value, HEX);
-  
-  Serial.println("Calculating crc in a single call");
-  
-  //XModem
-  value = crc.XModemCrc(data,0,sizeof data);
-  Serial.print("XModem crc = 0x");    
+
+
+  Serial.println("\nSolving crc incrementally:");
+  memcpy(msg, data, sizeof msg);
+  msg[4] = value >> 8;
+  msg[5] = value & 0xFF;
+  crc.clearCrc();
+  for (byte i = 0; i < sizeof msg; i++)
+  {
+    crc.updateCrc(msg[i]);
+  }
+  value = crc.getCrc();
+  Serial.print("\ncrc = 0x");
   Serial.println(value, HEX);
+
+  
+  Serial.println("\n\nCalculating crc in a single call");
+
+  //XModem
+  value = crc.XModemCrc(data, 0, sizeof data);
+  Serial.print("XModem crc = 0x");
+  Serial.println(value, HEX);
+  memcpy(msg, data, sizeof msg);
+  msg[4] = value >> 8;
+  msg[5] = value & 0xFF;
+
   //Reference xmodem
   Serial.println("Reference XModem crc");
-  value = calcrc((char*)data, sizeof data);
-  Serial.print("crc = 0x");    
+  value = calcrcX((char*)data, sizeof data);
+  Serial.print("crc = 0x");
   Serial.println(value, HEX);
 
-  //Modbus
-  value = crc.Modbus(data,0,sizeof data);
-  Serial.print("Modbus crc = 0x");    
+
+  Serial.println("\nSolving crc in a single call:");
+  value = crc.XModemCrc(msg, 0, sizeof msg);
+  Serial.print("crc = 0x");
   Serial.println(value, HEX);
 
-  //Mcrf4XX
-  value = crc.Mcrf4XX(data,0,sizeof data);
-  Serial.print("Mcrf4XX crc = 0x");    
-  Serial.println(value, HEX);
 
-  while(true);
+  crc.fastCrc(data, 0, sizeof data, false, false, 0x1021, 0x0000, 0x0000, 0x8000, 0xffff);
+
+
+
+  //
+  //  //Modbus
+  //  value = crc.Modbus(data,0,sizeof data);
+  //  Serial.print("Modbus crc = 0x");
+  //  Serial.println(value, HEX);
+  //
+  //  //Mcrf4XX
+  //  value = crc.Mcrf4XX(data,0,sizeof data);
+  //  Serial.print("Mcrf4XX crc = 0x");
+  //  Serial.println(value, HEX);
+
+
+
+
+  while (true);
 }
 //Check routine taken from
 //http://web.mit.edu/6.115/www/miscfiles/amulet/amulet-help/xmodem.htm
+int calcrcX(char *ptr, int count)
+{
+  int  crc;
+  char i;
+  crc = 0;
+  while (--count >= 0)
+  {
+    crc = crc ^ (int) * ptr++ << 8;
+    i = 8;
+    do
+    {
+      if (crc & 0x8000)
+        crc = crc << 1 ^ 0x1021;
+      else
+        crc = crc << 1;
+    } while (--i);
+  }
+  return (crc);
+}
+
 int calcrc(char *ptr, int count)
 {
-    int  crc;
-    char i;
-    crc = 0;
-    while (--count >= 0)
+  int  crc;
+  char i;
+  crc = 0;
+  while (--count >= 0)
+  {
+    crc = crc ^ (int) * ptr++ << 8;
+    i = 8;
+    do
     {
-        crc = crc ^ (int) *ptr++ << 8;
-        i = 8;
-        do
-        {
-            if (crc & 0x8000)
-                crc = crc << 1 ^ 0x1021;
-            else
-                crc = crc << 1;
-        } while(--i);
-    }
-    return (crc);
+      if (crc & 0x8000)
+        crc = crc << 1 ^ CRC_POLY_16;
+      else
+        crc = crc << 1;
+    } while (--i);
+  }
+  return (crc);
 }
