@@ -1,4 +1,4 @@
-#include <Crc16.h>
+#include "Crc16.h"
 //Crc 16 library (XModem)
 Crc16 crc; 
 
@@ -21,12 +21,12 @@ void loop()
     see http://www.lammertbies.nl/comm/info/crc-calculation.html
   */
   //calculate crc incrementally
-  byte data[] = "123456789";
+  byte data[] = {0x1, 0x70, 0x1, 0x69};
   
   Serial.println("Calculating crc incrementally");
   
   crc.clearCrc();
-  for(byte i=0;i<9;i++)
+  for(byte i=0;i<sizeof data;i++)
   {
      Serial.print("byte ");
      Serial.print(i);
@@ -41,22 +41,22 @@ void loop()
   Serial.println("Calculating crc in a single call");
   
   //XModem
-  value = crc.XModemCrc(data,0,9);
+  value = crc.XModemCrc(data,0,sizeof data);
   Serial.print("XModem crc = 0x");    
   Serial.println(value, HEX);
   //Reference xmodem
   Serial.println("Reference XModem crc");
-  value = calcrc((char*)data, 9);
+  value = calcrc((char*)data, sizeof data);
   Serial.print("crc = 0x");    
   Serial.println(value, HEX);
 
   //Modbus
-  value = crc.Modbus(data,0,9);
+  value = crc.Modbus(data,0,sizeof data);
   Serial.print("Modbus crc = 0x");    
   Serial.println(value, HEX);
 
   //Mcrf4XX
-  value = crc.Mcrf4XX(data,0,9);
+  value = crc.Mcrf4XX(data,0,sizeof data);
   Serial.print("Mcrf4XX crc = 0x");    
   Serial.println(value, HEX);
 
