@@ -1,6 +1,6 @@
 #include "Crc16.h"
 //Crc 16 library (XModem)
-#define CRC_POLY_16  0x8005
+#define CRC_POLY_16  0x9eb2
 Crc16 crc(false, false, CRC_POLY_16, 0x0000, 0x0000, 0x8000, 0xFFFF);
 
 void setup()
